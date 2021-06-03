@@ -1,0 +1,1 @@
+# side-mission-extension-template
