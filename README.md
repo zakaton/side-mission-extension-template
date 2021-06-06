@@ -1,4 +1,11 @@
-# side-mission-extension-template
+# Ukaton Side Mission Extension Template
+
+How to connect to the Ukaton Side Mission motion module in chrome (desktop only):
+1. go to `chrome://bluetooth-internals`
+2. go to `devices`
+3. click `start scan`
+4. look for any devices starting with `SIDE_MISSIONS`, e.g. `SIDE_MISSIONS_1`
+5. click `Inspect`
 
 How to install on chrome (desktop only):
 1. clone
