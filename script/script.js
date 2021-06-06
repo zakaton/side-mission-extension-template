@@ -31,3 +31,29 @@ window.addEventListener("message", event => {
         }
     }
 })
+
+const modelViewers = Array.from(document.querySelectorAll("model-viewer"))
+modelViewers.forEach(modelViewer => {
+    modelViewer.removeAttribute("auto-rotate")
+    modelViewer.setAttribute("interaction-prompt", "none")
+})
+
+let yawOffset = 0
+let currentYaw = 0
+
+document.addEventListener("keypress", event => {
+    if (event.key === "c") {
+        yawOffset = currentYaw
+    }
+})
+
+window.addEventListener("sidemission", event => {
+    const {type, value}  = event.detail
+    if (type === "euler") {
+        const euler = value
+        modelViewers.forEach(modelViewer => {
+            currentYaw = euler.y
+            modelViewer.setAttribute("camera-orbit", `${euler.y - yawOffset}rad ${euler.x+(Math.PI/2)}rad`);
+        })
+    }
+})
