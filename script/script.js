@@ -1,12 +1,12 @@
 /* global THREE */
 
 window.addEventListener("message", event => {
-    const {data} = event
+    const { data } = event
     if (data.ukaton === "sideMission") {
-        const {index, type, timestamp} = data
+        const { index, type, timestamp } = data
 
         let value
-        switch(type) {
+        switch (type) {
             case "acceleration":
                 value = new THREE.Vector3().set(...data.value)
                 break
@@ -22,12 +22,24 @@ window.addEventListener("message", event => {
             case "quaternion":
                 value = new THREE.Quaternion().set(...data.value)
                 break
+
+            case "slouch":
+                value = data.value
+                break
         }
 
-        if (value) {
+        if (typeof value !== "undefined") {
             window.dispatchEvent(new CustomEvent("sidemission", {
-                detail: {index, type, value, timestamp}
+                detail: { index, type, value, timestamp }
             }))
         }
+    }
+})
+
+window.addEventListener("sidemission", event => {
+    const {type, value} = event.detail
+    if (type === "slouch") {
+        const slouch = value
+        document.body.style.filter = `blur(${slouch*40}px)`
     }
 })

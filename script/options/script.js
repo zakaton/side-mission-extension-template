@@ -3,6 +3,21 @@ chrome.tabs.getCurrent(tab => {
     currentTab = tab
 })
 
+// https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/src/math/MathUtils.js#L54
+function inverseLerp( x, y, value ) {
+
+	if ( x !== y ) {
+
+		return ( value - x ) / ( y - x );
+
+		 } else {
+
+		return 0;
+
+		 }
+
+}
+
 const ranges = {
     acceleration: {
         min: -20,
@@ -37,14 +52,17 @@ const titles = {
 const types = ["acceleration", "linearAcceleration", "rotationRate", "quaternion", "euler"]
 
 const legends = {
-    euler: ["pitch", "yaw", "roll"]
+    euler: ["pitch", "yaw", "roll", "pitchMin", "pitchMax"]
 }
 
 const colors = {
     x: "red",
     y: "green",
     z: "blue",
-    w: "purple"
+    w: "purple",
+    
+    pitchMin: "black",
+    pitchMax: "black"
 }
 
 let sideMissions = []
@@ -81,6 +99,30 @@ function updateNumberOfSideMissions(newNumberOfSideMissions) {
                 sideMission.configureSensors({ [sensorName]: enabled })
             })
 
+
+            const callibration = {
+                pitch: {
+                    min: -Math.PI,
+                    max: Math.PI
+                }
+            }
+            const callibratePitchMinButton = sideMissionContainer.querySelector(".settings .callibration .pitchMin")
+            callibratePitchMinButton.addEventListener("click", event => {
+                if (sideMission.euler.x < callibration.pitch.max) {
+                    callibration.pitch.min = sideMission.euler.x
+                    samples.euler.pitchMin.fill(callibration.pitch.min)
+                    draw("euler")
+                }
+            })
+            const callibratePitchMaxButton = sideMissionContainer.querySelector(".settings .callibration .pitchMax")
+            callibratePitchMaxButton.addEventListener("click", event => {
+                if (sideMission.euler.x > callibration.pitch.min) {
+                    callibration.pitch.max = sideMission.euler.x
+                    samples.euler.pitchMax.fill(callibration.pitch.max)
+                    draw("euler")
+                }
+            })
+
             const connectButton = sideMissionContainer.querySelector(".settings .connect")
             connectButton.addEventListener("click", () => sideMission.connect())
             sideMission.addEventListener("connect", () => {
@@ -107,6 +149,10 @@ function updateNumberOfSideMissions(newNumberOfSideMissions) {
                     if (type === "quaternion") {
                         samples[type].w = new Array(numberOfSamples).fill(0)
                     }
+                    if (type === "euler") {
+                        samples[type].pitchMin = new Array(numberOfSamples).fill(-Math.PI)
+                        samples[type].pitchMax = new Array(numberOfSamples).fill(Math.PI)
+                    }
 
                     sideMission.addEventListener(type, event => {
                         const { message } = event
@@ -124,6 +170,14 @@ function updateNumberOfSideMissions(newNumberOfSideMissions) {
                             draw(type)
                         }
 
+                        let slouch
+                        if (type === "euler") {
+                            const euler = message[type]
+                            let pitch = euler.x
+                            pitch = THREE.Math.clamp(pitch, callibration.pitch.min, callibration.pitch.max)
+                            slouch = inverseLerp(callibration.pitch.max, callibration.pitch.min, pitch)
+                        }
+
                         chrome.tabs.query({active: true}, tabs => {
                             if (tabs) {
                                 tabs.forEach(tab => {
@@ -135,6 +189,16 @@ function updateNumberOfSideMissions(newNumberOfSideMissions) {
                                             timestamp,
                                             index: sideMissionIndex
                                         })
+
+                                        if (type === "euler") {
+                                            chrome.tabs.sendMessage(tab.id, {
+                                                ukaton: "sideMission",
+                                                type: "slouch",
+                                                value: slouch,
+                                                timestamp,
+                                                index: sideMissionIndex
+                                            })
+                                        }
                                     }
                                 })
                             }
@@ -161,6 +225,9 @@ function updateNumberOfSideMissions(newNumberOfSideMissions) {
                 const legend = ["x", "y", "z"]
                 if (type === "quaternion") {
                     legend.push("w")
+                }
+                if (type === "euler") {
+                    legend.push("pitchMin", "pitchMax")
                 }
                 const texts = legend.map((key, index) => legends[type]?.[index] || key)
                 const legendMeasurement = context.measureText(texts.join(" "))

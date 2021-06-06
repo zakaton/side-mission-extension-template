@@ -45,10 +45,11 @@
     .sideMission.connected>.settings>.connect {
         display: none;
     }
-    .sideMission>.settings>.sensors {
+    .sideMission>.settings>.connected {
         width: fit-content;
+        float: left;
     }
-    .sideMission:not(.connected)>.settings>.sensors {
+    .sideMission:not(.connected)>.settings>.connected {
         display: none;
     }
 
@@ -91,7 +92,7 @@
                 <div class="settings">
                     <button class="connect">connect</button>
                     
-                    <fieldset class="sensors">
+                    <fieldset class="sensors connected">
                         <legend>sensors</legend>
                         <label class="accelerometer">
                             accelerometer <input type="checkbox">
@@ -102,6 +103,12 @@
                         <label class="quaternion">
                             quaternion <input type="checkbox">
                         </label>
+                    </fieldset>
+
+                    <fieldset class="callibration connected">
+                        <legend>callibration</legend>
+                        <button class="pitchMin">Pitch Min</button>
+                        <button class="pitchMax">Pitch Max</button>
                     </fieldset>
                 </div>
 
