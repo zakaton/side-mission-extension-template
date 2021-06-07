@@ -34,10 +34,16 @@ window.addEventListener("message", event => {
 
 try {
     if (google && google.maps && map) {
-        console.log(map)
-        // FILL
+        window.addEventListener("sidemission", event => {
+            const {type, value} = event.detail
+            if (type === "euler") {
+                const euler = value
+                const heading = THREE.Math.radToDeg(euler.y)
+                map.setHeading(heading)
+            }
+        })
     }
 }
 catch (error) {
-    // a google map isn't defined here
+    // a google map isn't defined in this scope
 }
