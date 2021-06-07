@@ -31,3 +31,13 @@ window.addEventListener("message", event => {
         }
     }
 })
+
+try {
+    if (google && google.maps && map) {
+        console.log(map)
+        // FILL
+    }
+}
+catch (error) {
+    // a google map isn't defined here
+}
