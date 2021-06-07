@@ -31,3 +31,19 @@ window.addEventListener("message", event => {
         }
     }
 })
+
+try {
+    if (mapboxgl && map) {
+        window.addEventListener("sidemission", event => {
+            const {type, value} = event.detail
+            if (type === "euler") {
+                const euler = value
+                const heading = THREE.Math.radToDeg(euler.y)
+                map.setBearing(heading)
+            }
+        })
+    }
+}
+catch (error) {
+    // a mapbox map isn't defined in this scope
+}

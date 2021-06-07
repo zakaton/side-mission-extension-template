@@ -1,5 +1,5 @@
 {
-    "name" : "Ukaton Side Mission Extension Template",
+    "name" : "Ukaton Side Mission Extension | Mapbox",
     "version" : "1.0",
     "manifest_version" : 2,
 
@@ -10,7 +10,8 @@
             "matches" : ["*://*/*"],
             "js" : ["script/content/script.js"],
             "css" : ["style/style.css"],
-            "run_at" : "document_end"
+            "run_at" : "document_end",
+            "all_frames": true
         }
     ],
     "permissions" : ["activeTab", "tabs"],
