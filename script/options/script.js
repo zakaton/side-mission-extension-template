@@ -1,7 +1,83 @@
+window.isExtension = true
+
+const AudioContext = window.AudioContext || window.webkitAudioContext
+const audioContext = new AudioContext()
+audioContext.addEventListener('statechange', event => {
+    if (audioContext.state !== 'running') {
+        document.addEventListener('click', event => {
+            audioContext.resume()
+        }, {once: true})
+    }
+})
+audioContext.dispatchEvent(new Event('statechange'))
+const resonanceAudioScene = new ResonanceAudio(audioContext)
+resonanceAudioScene.output.connect(audioContext.destination)
+resonanceAudioScene.setRoomProperties({
+    // room dimensions
+}, {
+    // room materials
+})
+
+const source = resonanceAudioScene.createSource()
+const oscillator = audioContext.createOscillator()
+oscillator.frequency = 440
+oscillator.type = "triangle"
+const gain = audioContext.createGain()
+gain.gain.value = 0
+oscillator.connect(gain).connect(source.input)
+oscillator.start()
+
+const callibrationScreen = {
+    width: 1,
+    height: 1,
+    distance: 1
+}
+
+document.addEventListener("mousedown", event => {
+    if (event.metaKey) {
+        gain.gain.value = 1
+    }
+})
+document.addEventListener("mousemove", event => {
+    if (gain.gain.value) {
+        let x = event.x
+        let y = event.y
+
+        x /= document.body.clientWidth
+        x -= 0.5
+
+        y /= document.body.clientHeight
+        y = 1 - y
+        y -= 0.5
+
+        x *= callibrationScreen.width
+        y *= callibrationScreen.height
+
+        source.setPosition(x, y, -callibrationScreen.distance)
+    }
+})
+document.addEventListener("mouseup", event => {
+    gain.gain.value = 0
+})
+
 let currentTab
 chrome.tabs.getCurrent(tab => {
     currentTab = tab
 })
+
+// https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/src/math/MathUtils.js#L54
+function inverseLerp( x, y, value ) {
+    return (x !== y)?
+        ( value - x ) / ( y - x ):
+        0
+}
+
+function feetToMeters(feet) {
+    return feet / 3.281
+}
+function inchesToMeters(inches) {
+    return feetToMeters(inches / 12)
+}
 
 const ranges = {
     acceleration: {
@@ -37,14 +113,18 @@ const titles = {
 const types = ["acceleration", "linearAcceleration", "rotationRate", "quaternion", "euler"]
 
 const legends = {
-    euler: ["pitch", "yaw", "roll"]
+    euler: ["pitch", "yaw", "roll", "defaultPitch", "defaultYaw", "defaultRoll"]
 }
 
 const colors = {
     x: "red",
     y: "green",
     z: "blue",
-    w: "purple"
+    w: "purple",
+    
+    defaultPitch: "darkred",
+    defaultYaw: "darkgreen",
+    defaultRoll: "darkblue",    
 }
 
 let sideMissions = []
@@ -67,11 +147,55 @@ function updateNumberOfSideMissions(newNumberOfSideMissions) {
 
             const sideMission = new SideMission()
 
-            const sideMissionCaseEntity = sideMissionContainer.querySelector("a-scene .case")
+            const matrix = new THREE.Matrix4()
+
+            const monkeyEntity = sideMissionContainer.querySelector("a-scene #monkey")
             sideMission.addEventListener("quaternion", event => {
                 const { message } = event
                 const { quaternion } = message
-                sideMissionCaseEntity.object3D.quaternion.copy(quaternion)
+                callibratedQuaternion.multiplyQuaternions(callibrationQuaternion, quaternion)
+                monkeyEntity.object3D.quaternion.multiplyQuaternions(yawQuaternion, callibratedQuaternion)
+
+                matrix.makeRotationFromQuaternion(callibratedQuaternion)
+
+                resonanceAudioScene.setListenerFromMatrix(matrix)
+
+                chrome.tabs.query({active: true}, tabs => {
+                    if (tabs) {
+                        tabs.forEach(tab => {
+                            if (tab.id !== currentTab.id) {
+                                chrome.tabs.sendMessage(tab.id, {
+                                    ukaton: "sideMission",
+                                    type: "matrix",
+                                    value: matrix.toArray(),
+                                    index: sideMissionIndex
+                                })
+                            }
+                        })
+                    }
+                })
+            })
+
+            const scene = sideMissionContainer.querySelector("a-scene")
+            let stream
+            const video = document.createElement("video")
+            video.autoplay = true
+            video.muted = true
+            document.addEventListener("keypress", event => {
+                if (event.key === "p") {
+                    if (!stream) {
+                        const {canvas} = scene
+                        stream = canvas.captureStream()
+                        video.srcObject = stream
+                        const {width, height} = canvas
+                        video.width = width
+                        video.height = height
+                        video.play()
+                    }
+                    else {
+                        video.requestPictureInPicture()
+                    }
+                }
             })
 
             const sensorsContainer = sideMissionContainer.querySelector(".sensors")
@@ -80,6 +204,67 @@ function updateNumberOfSideMissions(newNumberOfSideMissions) {
                 const enabled = event.target.checked
                 sideMission.configureSensors({ [sensorName]: enabled })
             })
+
+
+            const callibrationEuler = new THREE.Euler()
+            const callibrationQuaternion = new THREE.Quaternion()
+            const callibratedQuaternion = new THREE.Quaternion()
+            const yawEuler = new THREE.Euler()
+            yawEuler.y = Math.PI
+            const yawQuaternion = new THREE.Quaternion()
+            yawQuaternion.setFromEuler(yawEuler)
+
+            function onScreenUpdate() {
+                chrome.tabs.query({}, tabs => {
+                    if (tabs) {
+                        tabs.forEach(tab => {
+                            if (tab.id !== currentTab.id) {
+                                chrome.tabs.sendMessage(tab.id, {
+                                    ukaton: "sideMission",
+                                    type: "screen",
+                                    value: callibrationScreen,
+                                    index: sideMissionIndex
+                                })
+                            }
+                        })
+                    }
+                })
+            }
+
+            const onTabUpdated = (tabId, info) => {
+                if (info.status === "complete") {
+                    setTimeout(() => {
+                        chrome.tabs.sendMessage(tabId, {
+                            ukaton: "sideMission",
+                            type: "screen",
+                            value: callibrationScreen,
+                            index: sideMissionIndex
+                        })
+                    }, 100)
+                }
+            }
+            chrome.tabs.onUpdated.addListener(onTabUpdated)
+
+            const callibrateButton = sideMissionContainer.querySelector(".settings .callibration .callibrate")
+            callibrateButton.addEventListener("click", event => {
+                callibrationEuler.copy(sideMission.euler)
+                callibrationQuaternion.copy(sideMission.quaternion).invert()
+                samples.euler.defaultPitch.fill(callibrationEuler.x)
+                samples.euler.defaultYaw.fill(callibrationEuler.y)
+                samples.euler.defaultRoll.fill(callibrationEuler.z)
+                draw("euler")
+            })
+            
+
+            for (const dimension in callibrationScreen) {
+                const input = sideMissionContainer.querySelector(`.settings .screen .${dimension} input`)
+                input.addEventListener("input", event => {
+                    const dimensionValue = inchesToMeters(Number(event.target.value))
+                    callibrationScreen[dimension] = dimensionValue
+                    onScreenUpdate()
+                })
+                input.dispatchEvent(new Event("input"))
+            }
 
             const connectButton = sideMissionContainer.querySelector(".settings .connect")
             connectButton.addEventListener("click", () => sideMission.connect())
@@ -106,6 +291,11 @@ function updateNumberOfSideMissions(newNumberOfSideMissions) {
                     }
                     if (type === "quaternion") {
                         samples[type].w = new Array(numberOfSamples).fill(0)
+                    }
+                    if (type === "euler") {
+                        samples[type].defaultPitch = new Array(numberOfSamples).fill(0)
+                        samples[type].defaultYaw = new Array(numberOfSamples).fill(0)
+                        samples[type].defaultRoll = new Array(numberOfSamples).fill(0)
                     }
 
                     sideMission.addEventListener(type, event => {
@@ -161,6 +351,10 @@ function updateNumberOfSideMissions(newNumberOfSideMissions) {
                 const legend = ["x", "y", "z"]
                 if (type === "quaternion") {
                     legend.push("w")
+                }
+                if (type === "euler") {
+                    legend.push("defaultPitch", "defaultYaw", "defaultRoll")
+                    context.font = "22px serif"
                 }
                 const texts = legend.map((key, index) => legends[type]?.[index] || key)
                 const legendMeasurement = context.measureText(texts.join(" "))

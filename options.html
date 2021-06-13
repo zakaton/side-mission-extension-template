@@ -2,6 +2,7 @@
 
 <head>
     <script src='./script/aframe/aframe.min.js'></script>
+    <script src='./script/resonance/resonance.min.js'></script>
     <script src='./script/ukaton/SideMission.js'></script>
 </head>
 
@@ -9,7 +10,7 @@
     .sideMission {
         display: grid;
         grid-template-rows: auto repeat(2, 1fr);
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr) 300px;
 
         grid-template-areas:
             "title settings settings"
@@ -45,10 +46,11 @@
     .sideMission.connected>.settings>.connect {
         display: none;
     }
-    .sideMission>.settings>.sensors {
+    .sideMission>.settings>.connected {
         width: fit-content;
+        float: left;
     }
-    .sideMission:not(.connected)>.settings>.sensors {
+    .sideMission:not(.connected)>.settings>.connected {
         display: none;
     }
 
@@ -74,6 +76,8 @@
 </style>
 
 <body>
+    <div id="dpi" style="height: 1in; width: 1in; left: 100%; position: fixed; top: 100%;"></div>
+
     <h1>Ukaton Side Mission Extension Template</h1>
 
     <label id="numberOfSideMissions">
@@ -91,7 +95,7 @@
                 <div class="settings">
                     <button class="connect">connect</button>
                     
-                    <fieldset class="sensors">
+                    <fieldset class="sensors connected">
                         <legend>sensors</legend>
                         <label class="accelerometer">
                             accelerometer <input type="checkbox">
@@ -101,6 +105,24 @@
                         </label>
                         <label class="quaternion">
                             quaternion <input type="checkbox">
+                        </label>
+                    </fieldset>
+
+                    <fieldset class="callibration connected">
+                        <legend>callibration</legend>
+                        <button class="callibrate">callibrate</button>
+                    </fieldset>
+
+                    <fieldset class="screen">
+                        <legend>screen (command+click to play sound)</legend>
+                        <label class="width">
+                            width<input type="number" min="0" value="11" max="100">
+                        </label>
+                        <label class="height">
+                            height<input type="number" min="0" value="7" max="100">
+                        </label>
+                        <label class="distance">
+                            distance<input type="number" min="0" value="20" max="100">
                         </label>
                     </fieldset>
                 </div>
@@ -125,22 +147,25 @@
                 <div class="scene">
                     <a-scene embedded vr-mode-ui="enabled: false">
                         <a-assets>
-                            <a-asset-item id="bodyAsset" src="assets/sideMission_body.obj"></a-asset-item>
-                            <a-asset-item id="lidAsset" src="assets/sideMission_lid.obj"></a-asset-item>
-                            <img id="logoAsset" src="assets/logo.png" />
+                            <a-asset-item id="monkeyAsset" src="./assets/monkey_head/scene.gltf"></a-asset-item>
+                            <a-asset-item id="iMacAsset" src="./assets/imac/scene.gltf"></a-asset-item>
                         </a-assets>
-                        <a-camera active position="0 0 3" rotation="0 0 0"></a-camera>
-                        <a-entity class="case" position="0 0 0" rotation="0 -90 0">
-                            <a-image scale="1.8 1.8 1.8" rotation="-90 0 0" position="0 0.455 0" class="logo"
-                                src="#logoAsset"></a-image>
-                            <a-entity scale="0.05 0.05 0.05" rotation="-90 -90 0">
-                                <a-entity position="-20 -17.5 -10">
-                                    <a-entity class="body" obj-model="obj: #bodyAsset;"></a-entity>
-                                    <a-entity class="lid" obj-model="obj: #lidAsset;"></a-entity>
-                                </a-entity>
+                        <a-entity position="-1 0.8 2">
+                            <a-entity rotation="0 0 0">
+                                <a-camera active position="0 0 0" fov="40"></a-camera>
                             </a-entity>
                         </a-entity>
-                        <a-sky color="darkgrey"></a-sky>
+                        <a-entity id="monkey">
+                            <a-entity scale="0.02 0.02 0.02">
+                                <a-entity gltf-model="#monkeyAsset" position="0 -20 0" rotation="0 180 0"></a-entity>
+                            </a-entity>
+                        </a-entity>
+                        <a-entity id="iMac" position="0 -0.5 1">
+                            <a-entity scale="0.008 0.008 0.008">
+                                <a-entity gltf-model="#iMacAsset" rotation="0 90 0"></a-entity>
+                            </a-entity>
+                        </a-entity>
+                        <a-sky color="powderblue"></a-sky>
                     </a-scene>
                 </div>
             </div>

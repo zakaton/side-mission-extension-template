@@ -1,6 +1,6 @@
 /* global chrome */
 
-// relay any messages from the context menu (background.js) to 
+// relay any messages from the options page
 chrome.runtime.onMessage.addListener(message => {
     if (message.ukaton === "sideMission") {
         window.postMessage(message)
@@ -30,6 +30,7 @@ function importScripts(...scriptImports) {
 
 window.addEventListener("load", () => {
     importScripts(
+        {src: "resonance/resonance.min"},
         {src: "three/three.min"},
         {src: "script"}
     )
