@@ -3,6 +3,13 @@ chrome.tabs.getCurrent(tab => {
     currentTab = tab
 })
 
+// https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/src/math/MathUtils.js#L54
+function inverseLerp( x, y, value ) {
+    return (x !== y)?
+        ( value - x ) / ( y - x ):
+        0
+}
+
 const ranges = {
     acceleration: {
         min: -20,
@@ -37,14 +44,18 @@ const titles = {
 const types = ["acceleration", "linearAcceleration", "rotationRate", "quaternion", "euler"]
 
 const legends = {
-    euler: ["pitch", "yaw", "roll"]
+    euler: ["pitch", "yaw", "roll", "defaultPitch", "defaultYaw", "defaultRoll"]
 }
 
 const colors = {
     x: "red",
     y: "green",
     z: "blue",
-    w: "purple"
+    w: "purple",
+    
+    defaultPitch: "darkred",
+    defaultYaw: "darkgreen",
+    defaultRoll: "darkblue",    
 }
 
 let sideMissions = []
@@ -67,11 +78,27 @@ function updateNumberOfSideMissions(newNumberOfSideMissions) {
 
             const sideMission = new SideMission()
 
-            const sideMissionCaseEntity = sideMissionContainer.querySelector("a-scene .case")
+            const entity = sideMissionContainer.querySelector("a-scene .case")
             sideMission.addEventListener("quaternion", event => {
                 const { message } = event
                 const { quaternion } = message
-                sideMissionCaseEntity.object3D.quaternion.copy(quaternion)
+                callibratedQuaternion.multiplyQuaternions(callibrationQuaternion, quaternion)
+                entity.object3D.quaternion.copy(callibratedQuaternion)
+
+                chrome.tabs.query({active: true}, tabs => {
+                    if (tabs) {
+                        tabs.forEach(tab => {
+                            if (tab.id !== currentTab.id) {
+                                chrome.tabs.sendMessage(tab.id, {
+                                    ukaton: "sideMission",
+                                    type: "callibratedQuaternion",
+                                    value: callibratedQuaternion.toArray(),
+                                    index: sideMissionIndex
+                                })
+                            }
+                        })
+                    }
+                })
             })
 
             const sensorsContainer = sideMissionContainer.querySelector(".sensors")
@@ -79,6 +106,21 @@ function updateNumberOfSideMissions(newNumberOfSideMissions) {
                 const sensorName = event.target.closest("label").className
                 const enabled = event.target.checked
                 sideMission.configureSensors({ [sensorName]: enabled })
+            })
+
+
+            const callibrationQuaternion = new THREE.Quaternion()
+            const callibratedQuaternion = new THREE.Quaternion()
+            const callibrationEuler = new THREE.Euler()
+
+            const callibrateButton = sideMissionContainer.querySelector(".settings .callibration .callibrate")
+            callibrateButton.addEventListener("click", event => {
+                callibrationQuaternion.copy(sideMission.quaternion).invert()
+                callibrationEuler.copy(sideMission.euler)
+                samples.euler.defaultPitch.fill(callibrationEuler.x)
+                samples.euler.defaultYaw.fill(callibrationEuler.y)
+                samples.euler.defaultRoll.fill(callibrationEuler.z)
+                draw("euler")
             })
 
             const connectButton = sideMissionContainer.querySelector(".settings .connect")
@@ -106,6 +148,11 @@ function updateNumberOfSideMissions(newNumberOfSideMissions) {
                     }
                     if (type === "quaternion") {
                         samples[type].w = new Array(numberOfSamples).fill(0)
+                    }
+                    if (type === "euler") {
+                        samples[type].defaultPitch = new Array(numberOfSamples).fill(0)
+                        samples[type].defaultYaw = new Array(numberOfSamples).fill(0)
+                        samples[type].defaultRoll = new Array(numberOfSamples).fill(0)
                     }
 
                     sideMission.addEventListener(type, event => {
@@ -161,6 +208,10 @@ function updateNumberOfSideMissions(newNumberOfSideMissions) {
                 const legend = ["x", "y", "z"]
                 if (type === "quaternion") {
                     legend.push("w")
+                }
+                if (type === "euler") {
+                    legend.push("defaultPitch", "defaultYaw", "defaultRoll")
+                    context.font = "22px serif"
                 }
                 const texts = legend.map((key, index) => legends[type]?.[index] || key)
                 const legendMeasurement = context.measureText(texts.join(" "))
