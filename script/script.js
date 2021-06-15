@@ -35,7 +35,7 @@ window.addEventListener("message", event => {
     }
 })
 
-let scene, camera, entity, cameraHeight, cameraRadius, cursor, mode, vector
+let scene, camera, entity, cameraHeight, cameraRadius, cursor, mode, vector, quaternion
 if (window.AFRAME) {
     scene = document.querySelector("a-scene")
     camera = scene.querySelector("a-camera, a-entity[camera]")
@@ -51,7 +51,7 @@ if (window.AFRAME) {
         const {type, value} = event.detail
         switch(type) {
             case "callibratedQuaternion":
-                const quaternion = value
+                quaternion = value
                 switch(mode) {
                     case "nothing":
 
