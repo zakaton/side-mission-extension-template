@@ -74,7 +74,7 @@ sideMission.dataTypes.forEach(type => {
     sideMission.addEventListener(type, event => {
         const { message } = event;
         const { timestamp } = message;
-        components.forEach(component => {
+        components.filter(component => component in message[type]).forEach(component => {
             samples[type][component].unshift(message[type][component]);
             samples[type][component].pop();
         });
