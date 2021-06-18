@@ -1,13 +1,16 @@
 /* global THREE */
 
 window.addEventListener("message", event => {
-    const { data } = event
+    const {data} = event
     if (data.ukaton === "sideMission") {
-        const { index, type, timestamp } = data
+        const {type, timestamp} = data
 
         let value
-        switch (type) {
+        switch(type) {
             case "acceleration":
+                value = new THREE.Vector3().set(...data.value)
+                break
+            case "gravity":
                 value = new THREE.Vector3().set(...data.value)
                 break
             case "linearAcceleration":
@@ -16,11 +19,14 @@ window.addEventListener("message", event => {
             case "rotationRate":
                 value = new THREE.Euler().set(...data.value)
                 break
-            case "euler":
-                value = new THREE.Euler().set(...data.value)
+            case "magnetometer":
+                value = new THREE.Vector3().set(...data.value)
                 break
             case "quaternion":
                 value = new THREE.Quaternion().set(...data.value)
+                break
+            case "euler":
+                value = new THREE.Euler().set(...data.value)
                 break
 
             case "slouch":
@@ -28,9 +34,9 @@ window.addEventListener("message", event => {
                 break
         }
 
-        if (typeof value !== "undefined") {
+        if (value != undefined) {
             window.dispatchEvent(new CustomEvent("sidemission", {
-                detail: { index, type, value, timestamp }
+                detail: {type, value, timestamp}
             }))
         }
     }

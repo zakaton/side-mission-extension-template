@@ -2,331 +2,328 @@
 
 class SideMission {
   constructor() {
-    this.quaternion = new THREE.Quaternion()
-    this.euler = new THREE.Euler()
-    this.acceleration = new THREE.Vector3()
-    this.linearAcceleration = new THREE.Vector3()
-    this.rotationRate = new THREE.Euler()
+    this.acceleration = new THREE.Vector3();
+    this.gravity = new THREE.Quaternion();
+    this.linearAcceleration = new THREE.Vector3();
+    this.rotationRate = new THREE.Euler();
+    this.magnetometer = new THREE.Quaternion();
+    this.quaternion = new THREE.Quaternion();
+    this.euler = new THREE.Euler();
 
-    // Service 1: IMU Data Characteristics
-    this.IMU_DATA_SERVICE_UUID = "a84a7896-9d7a-41c8-8d46-7d530266c930"
-    this.ACCEL_DATA_CHARACTERISTIC_UUID =
-      "71eb1b54-f492-42bf-b31c-abd6d4a78626"
-    this.LIN_ACCEL_DATA_CHARACTERISTIC_UUID =
-      "3011e95c-f428-4ecc-b8fe-b478c0ffc9af"
-    this.GYRO_DATA_CHARACTERISTIC_UUID = "ff5ca46e-d2ac-4fdb-bb1d-d398f15df5a9"
-
-    // Service 2: Configuration Characteristics
-    this.CONFIGURATION_SERVICE_UUID = "ca51b65e-1c92-4e54-9bd7-fc1088f48832"
+    this.SERVICE_UUID = "ca51b65e-1c92-4e54-9bd7-fc1088f48832";
     this.CONFIGURATION_CHARACTERISTIC_UUID =
-      "816ad53c-29df-4699-b25a-4acdf89699d6"
-    this.QUAT_DATA_CHARACTERISTIC_UUID = "bb52dc35-1a47-41c1-ae97-ce138dbf2cab"
+      "816ad53c-29df-4699-b25a-4acdf89699d6";
+    this.DATA_CHARACTERISTIC_UUID = "bb52dc35-1a47-41c1-ae97-ce138dbf2cab";
 
     window.addEventListener("beforeunload", event => {
-      this.configureSensors({
-        accelerometer: false,
-        gyroscope: false,
-        quaternion: false
-      })
-    })
+      this.disableAllSensors();
+    });
   }
+
   connect() {
-    if (this.isConnected()) {
-      return Promise.resolve()
+    if (this.isConnected) {
+      return Promise.resolve();
     } else {
       return navigator.bluetooth
         .requestDevice({
           filters: [
             {
-              services: [
-                this.IMU_DATA_SERVICE_UUID,
-                this.CONFIGURATION_SERVICE_UUID
-              ]
+              services: [this.SERVICE_UUID]
             }
-          ]
+          ],
+          optionalServices: ["battery_service"]
         })
         .then(device => {
-          console.log("got device")
-          this.device = device
+          console.log("got device");
+          this.device = device;
           this.device.addEventListener(
             "gattserverdisconnected",
             this.onGattServerDisconnected.bind(this)
-          )
+          );
         })
         .then(() => {
-          return this.device.gatt.connect()
+          return this.device.gatt.connect();
         })
         .then(server => {
-          console.log("got server")
-          this.server = server
+          console.log("got server");
+          this.server = server;
         })
         .then(() => {
-          return this.server.getPrimaryService(this.IMU_DATA_SERVICE_UUID)
+          return this.server.getPrimaryService(this.SERVICE_UUID);
         })
-        .then(imuDataService => {
-          console.log("got imu data service")
-          this.imuDataService = imuDataService
-        })
-        .then(() => {
-          return this.imuDataService.getCharacteristic(
-            this.ACCEL_DATA_CHARACTERISTIC_UUID
-          )
-        })
-        .then(accelerometerDataCharacteristic => {
-          console.log("got accelerometer data characteristic")
-          this.accelerometerDataCharacteristic = accelerometerDataCharacteristic
-          this.accelerometerDataCharacteristic.addEventListener(
-            "characteristicvaluechanged",
-            this.onAccelerometerDataCharacteristicValueChanged.bind(this)
-          )
-          return this.accelerometerDataCharacteristic
-            .startNotifications()
-            .catch(error => console.log(error))
+        .then(service => {
+          console.log("got service");
+          this.service = service;
         })
         .then(() => {
-          console.log("started accelerometer data notifications")
-        })
-        .then(() => {
-          return this.imuDataService.getCharacteristic(
-            this.LIN_ACCEL_DATA_CHARACTERISTIC_UUID
-          )
-        })
-        .then(linearAccelerometerDataCharacteristic => {
-          console.log("got linear accelerometer data characteristic")
-          this.linearAccelerometerDataCharacteristic = linearAccelerometerDataCharacteristic
-          this.linearAccelerometerDataCharacteristic.addEventListener(
-            "characteristicvaluechanged",
-            this.onLinearAccelerometerDataCharacteristicValueChanged.bind(this)
-          )
-          return this.linearAccelerometerDataCharacteristic
-            .startNotifications()
-            .catch(error => console.log(error))
-        })
-        .then(() => {
-          console.log("started linear accelerometer data notifications")
-        })
-        .then(() => {
-          return this.imuDataService.getCharacteristic(
-            this.GYRO_DATA_CHARACTERISTIC_UUID
-          )
-        })
-        .then(gyroscopeDataCharacteristic => {
-          console.log("got gyroscope data characteristic")
-          this.gyroscopeDataCharacteristic = gyroscopeDataCharacteristic
-          this.gyroscopeDataCharacteristic.addEventListener(
-            "characteristicvaluechanged",
-            this.onGyroscopeDataCharacteristicValueChanged.bind(this)
-          )
-          return this.gyroscopeDataCharacteristic
-            .startNotifications()
-            .catch(error => console.log(error))
-        })
-        .then(() => {
-          console.log("started gyroscope data notifications")
-        })
-        .then(() => {
-          return this.server.getPrimaryService(this.CONFIGURATION_SERVICE_UUID)
-        })
-        .then(configurationService => {
-          console.log("get config service")
-          this.configurationService = configurationService
-        })
-        .then(() => {
-          return this.configurationService.getCharacteristic(
+          return this.service.getCharacteristic(
             this.CONFIGURATION_CHARACTERISTIC_UUID
-          )
+          );
         })
         .then(configurationCharacteristic => {
-          console.log("got config characteristic")
-          this.configurationCharacteristic = configurationCharacteristic
+          console.log("got configuration characteristic");
+          this.configurationCharacteristic = configurationCharacteristic;
           this.configurationCharacteristic.addEventListener(
             "characteristicvaluechanged",
             this.onConfigurationCharacteristicValueChanged.bind(this)
-          )
+          );
           return this.configurationCharacteristic
             .startNotifications()
-            .catch(error => console.log(error))
+            .catch(error => console.log(error));
         })
         .then(() => {
-          console.log("started config notifications")
+          return this.service.getCharacteristic(this.DATA_CHARACTERISTIC_UUID);
         })
-        .then(() => {
-          return this.configurationService.getCharacteristic(
-            this.QUAT_DATA_CHARACTERISTIC_UUID
-          )
-        })
-        .then(quaternionDataCharacteristic => {
-          console.log("got quaternion data characteristic")
-          this.quaternionDataCharacteristic = quaternionDataCharacteristic
-          this.quaternionDataCharacteristic.addEventListener(
+        .then(dataCharacteristic => {
+          console.log("got data characteristic");
+          this.dataCharacteristic = dataCharacteristic;
+          this.dataCharacteristic.addEventListener(
             "characteristicvaluechanged",
-            this.onQuaternionDataCharacteristicValueChanged.bind(this)
-          )
-          return this.quaternionDataCharacteristic
+            this.onDataCharacteristicValueChanged.bind(this)
+          );
+          return this.dataCharacteristic
             .startNotifications()
-            .catch(error => console.log(error))
+            .catch(error => console.log(error));
         })
         .then(() => {
-          console.log("started quaternion data notifications")
+          return this.server.getPrimaryService("battery_service");
+        })
+        .then(batteryService => {
+          console.log("got battery service");
+          this.batteryService = batteryService;
         })
         .then(() => {
-          console.log("done")
-          this.dispatchEvent({ type: "connect" })
+          console.log("getting battery level characteristic");
+          return this.batteryService.getCharacteristic("battery_level");
         })
+        .then(batteryLevelCharacteristic => {
+          console.log("got battery level characteristic");
+          this.batteryLevelCharacteristic = batteryLevelCharacteristic;
+        })
+        .then(() => {
+          console.log("connected");
+          this.dispatchEvent({ type: "connected" });
+        });
     }
   }
-  isConnected() {
-    return this.device && this.device.gatt.connected
+  get isConnected() {
+    return this.device && this.device.gatt.connected;
   }
 
   onGattServerDisconnected(event) {
-    console.log("gettserverdisconnected")
-    this.device.gatt.connect()
+    console.log("gettserverdisconnected");
+    this.dispatchEvent({ type: "disconnected" });
+    this.device.gatt.connect();
   }
 
-  onQuaternionDataCharacteristicValueChanged(event) {
-    const dataView = event.target.value
+  configureSensors(configuration = {}, rate) {
+    if (this.isConnected) {
+      this.configurationCharacteristic.readValue().then(dataView => {
+        let configurationBitmask = dataView.getUint8(0);
+        configuration = Object.assign(
+          this.parseConfiguration(configurationBitmask),
+          configuration
+        );
+        configurationBitmask = this.createConfigurationBitmask(configuration);
+        dataView.setUint8(0, configurationBitmask);
 
-    const quaternion = new THREE.Quaternion()
-    const x = dataView.getFloat32(0, true)
-    const y = dataView.getFloat32(4, true)
-    const z = dataView.getFloat32(8, true)
-    const w = dataView.getFloat32(12, true)
-    quaternion.set(y, w, -z, x)
+        rate = rate || dataView.getUint16(1, true);
+        dataView.setUint16(1, rate, true);
 
-    const euler = new THREE.Euler()
-    euler.order = "YXZ"
-    euler.setFromQuaternion(quaternion)
-
-    this.quaternion.copy(quaternion)
-    this.euler.copy(euler)
-
-    const timestamp = dataView.getUint32(16, true)
-
-    this.dispatchEvent({
-      type: "quaternion",
-      message: { quaternion, timestamp }
-    })
-
-    this.dispatchEvent({
-      type: "euler",
-      message: { euler, timestamp }
-    })
+        return this.configurationCharacteristic.writeValue(dataView);
+      });
+    } else {
+      return Promise.resolve();
+    }
   }
-  onAccelerometerDataCharacteristicValueChanged(event) {
-    const dataView = event.target.value
-
-    const acceleration = new THREE.Vector3()
-    const x = dataView.getFloat32(0, true)
-    const y = dataView.getFloat32(4, true)
-    const z = dataView.getFloat32(8, true)
-    acceleration.set(-x, -z, y)
-    this.acceleration.copy(acceleration)
-
-    const timestamp = dataView.getUint32(12, true)
-
-    this.dispatchEvent({
-      type: "acceleration",
-      message: { acceleration, timestamp }
-    })
+  
+  setRate(rate) {
+    return this.configureSensors(null, rate);
   }
-  onLinearAccelerometerDataCharacteristicValueChanged(event) {
-    const dataView = event.target.value
 
-    const linearAcceleration = new THREE.Vector3()
-    const x = dataView.getFloat32(0, true)
-    const y = dataView.getFloat32(4, true)
-    const z = dataView.getFloat32(8, true)
-    linearAcceleration.set(-x, -z, y)
-    this.linearAcceleration.copy(linearAcceleration)
-
-    const timestamp = dataView.getUint32(12, true)
-
-    this.dispatchEvent({
-      type: "linearAcceleration",
-      message: { linearAcceleration, timestamp }
-    })
-  }
-  onGyroscopeDataCharacteristicValueChanged(event) {
-    const dataView = event.target.value
-
-    const rotationRate = new THREE.Euler()
-    const x = dataView.getFloat32(0, true)
-    const y = dataView.getFloat32(4, true)
-    const z = dataView.getFloat32(8, true)
-    rotationRate.set(-x, z, -y)
-    this.rotationRate.copy(rotationRate)
-
-    const timestamp = dataView.getUint32(12, true)
-
-    this.dispatchEvent({
-      type: "rotationRate",
-      message: { rotationRate, timestamp }
-    })
+  disableAllSensors() {
+    return this.configureSensors({
+      acceleration: false,
+      gravity: false,
+      linearAcceleration: false,
+      rotationRate: false,
+      magnetometer: false,
+      quaternion: false
+    });
   }
 
   onConfigurationCharacteristicValueChanged(event) {
-    console.log(event)
+    const dataView = event.target.value;
+    const configurationBitmask = dataView.getUint8(0);
+    const configuration = this.parseConfiguration(configurationBitmask);
+    const rate = dataView.getUint8(1);
+    this.dispatchEvent({
+      type: "configuration",
+      message: { configuration, rate }
+    });
   }
 
-  configureSensors(options = {}) {
-    if (this.isConnected()) {
-      const dataView = this.configurationCharacteristic.value?.byteLength
-        ? this.configurationCharacteristic.value
-        : new DataView(new Uint8Array([0]).buffer)
-
-      let byte = dataView && dataView.byteLength ? dataView.getUint8(0) : 0
-
-      if (byte == 1) byte = 0
-
-      for (const key in options) {
-        let enabled = options[key] || false
-
-        switch (key) {
-          case "accelerometer":
-            if (enabled) byte |= this.enumeration.ACCELEROMETER
-            else byte &= this.enumeration.ACCELEROMETER ^ this.enumeration.ALL
-            break
-          case "gyroscope":
-            if (enabled) byte |= this.enumeration.GYROSCOPE
-            else byte &= this.enumeration.GYROSCOPE ^ this.enumeration.ALL
-            break
-          case "quaternion":
-            if (enabled) byte |= this.enumeration.QUATERNION
-            else byte &= this.enumeration.QUATERNION ^ this.enumeration.ALL
-            break
-
-          default:
-            break
+  parseConfiguration(configurationBitmask = 0) {
+    const configuration = {};
+    for (const bitFlag in this.bitFlags) {
+      configuration[bitFlag] = Boolean(
+        configurationBitmask & this.bitFlags[bitFlag]
+      );
+    }
+    return configuration;
+  }
+  createConfigurationBitmask(configuration = {}) {
+    let configurationBitmask = 0;
+    for (const bitFlag in configuration) {
+      if (bitFlag in this.bitFlags) {
+        const enabled = configuration[bitFlag];
+        if (enabled) {
+          configurationBitmask |= this.bitFlags[bitFlag];
+        } else {
+          configurationBitmask &= 0b11111111 ^ this.bitFlags[bitFlag];
         }
       }
+    }
+    return configurationBitmask;
+  }
 
-      byte = byte || this.enumeration.NONE
+  onDataCharacteristicValueChanged(event) {
+    const dataView = event.target.value;
+    
+    const dataBitmask = dataView.getUint8(0);
+    const timestamp = dataView.getUint32(1, true);
 
-      dataView.setUint8(0, byte)
+    const dataTypes = [];
+    for (const dataType in this.bitFlags) {
+      if (dataBitmask & this.bitFlags[dataType]) {
+        dataTypes.push(dataType);
+      }
+    }
+    
+    if (dataTypes.length) {
+      let byteOffset = 5;
 
-      console.log(byte.toString(2))
+      dataTypes.forEach(dataType => {
+        let vector, quaternion, euler;
+        const scalar = this.scalars[dataType];
+        switch (dataType) {
+          case "acceleration":
+          case "gravity":
+          case "linearAcceleration":
+          case "magnetometer":
+            vector = this.getVector(dataView, byteOffset, scalar);
+            byteOffset += 6;
 
-      return this.configurationCharacteristic.writeValue(dataView)
-    } else {
-      return Promise.resolve()
+            this[dataType].copy(vector);
+            this.dispatchEvent({
+              type: dataType,
+              message: { timestamp, [dataType]: vector }
+            });
+            break;
+          case "rotationRate":
+            euler = this.getEuler(dataView, byteOffset, scalar);
+            byteOffset += 6;
+
+            this[dataType].copy(euler);
+            this.dispatchEvent({
+              type: dataType,
+              message: { timestamp, [dataType]: euler }
+            });
+            break;
+          case "quaternion":
+            quaternion = this.getQuaternion(dataView, byteOffset, scalar);
+            byteOffset += 8;
+
+            this[dataType].copy(quaternion);
+            this.dispatchEvent({
+              type: dataType,
+              message: { timestamp, [dataType]: quaternion }
+            });
+
+            euler = new THREE.Euler().setFromQuaternion(quaternion);
+            euler.reorder("YXZ");
+            this.euler.copy(euler);
+            this.dispatchEvent({
+              type: "euler",
+              message: { timestamp, euler }
+            });
+            break;
+        }
+      });
     }
   }
 
-  get enumeration() {
-    return this.constructor.enumeration
+  getVector(dataView, offset, scalar = 1) {
+    const vector = new THREE.Vector3();
+    const x = dataView.getInt16(offset, true);
+    const y = dataView.getInt16(offset + 2, true);
+    const z = dataView.getInt16(offset + 4, true);
+    vector.set(-x, -z, y).multiplyScalar(scalar);
+    return vector;
+  }
+  getEuler(dataView, offset, scalar = 1) {
+    const euler = new THREE.Euler();
+    const x = THREE.Math.degToRad(dataView.getInt16(offset, true) * scalar);
+    const y = THREE.Math.degToRad(dataView.getInt16(offset + 2, true) * scalar);
+    const z = THREE.Math.degToRad(dataView.getInt16(offset + 4, true) * scalar);
+    euler.set(-x, z, -y, "YXZ");
+    return euler;
+  }
+  getQuaternion(dataView, offset, scalar = 1) {
+    const quaternion = new THREE.Quaternion();
+    const w = dataView.getInt16(offset, true) * scalar;
+    const x = dataView.getInt16(offset + 2, true) * scalar;
+    const y = dataView.getInt16(offset + 4, true) * scalar;
+    const z = dataView.getInt16(offset + 6, true) * scalar;
+    quaternion.set(x, z, -y, w);
+    return quaternion;
+  }
+
+  getBatteryLevel() {
+    return this.batteryLevelCharacteristic.readValue().then(dataView => {
+      return dataView.getUint8(0);
+    });
+  }
+
+  get bitFlags() {
+    return this.constructor.bitFlags;
+  }
+
+  get scalars() {
+    return this.constructor.scalars;
+  }
+
+  get dataTypes() {
+    return this.constructor.dataTypes;
   }
 }
 
 Object.assign(SideMission, {
-  enumeration: {
-    QUATERNION: 0b1000 << 4,
-    GYROSCOPE: 0b0100 << 4,
-    ACCELEROMETER: 0b0010 << 4,
+  bitFlags: {
+    acceleration: 1 << 0,
+    gravity: 1 << 1,
+    linearAcceleration: 1 << 2,
+    rotationRate: 1 << 3,
+    magnetometer: 1 << 4,
+    quaternion: 1 << 5
+  },
+  scalars: {
+    acceleration: 1 / 100,
+    gravity: 1 / 100,
+    linearAcceleration: 1 / 100,
+    rotationRate: 1 / 16,
+    magnetometer: 1 / 16,
+    quaternion: 1 / (1 << 14)
+  },
+  dataTypes: [
+    "acceleration",
+    "gravity",
+    "linearAcceleration",
+    "rotationRate",
+    "magnetometer",
+    "quaternion",
+    "euler"
+  ]
+});
 
-    NONE: 0b1,
-    ALL: 0b1110 << 4
-  }
-})
-
-Object.assign(SideMission.prototype, THREE.EventDispatcher.prototype)
+Object.assign(SideMission.prototype, THREE.EventDispatcher.prototype);

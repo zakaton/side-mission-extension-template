@@ -4,25 +4,52 @@
     <script src='./script/aframe/aframe.min.js'></script>
     <script src='./script/ukaton/SideMission.js'></script>
 </head>
-
 <style>
-    .sideMission {
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    #container {
         display: grid;
-        grid-template-rows: auto repeat(2, 1fr);
+        width: 100%;
+        height: 100%;
+
+        grid-template-rows: repeat(3, 1fr);
         grid-template-columns: repeat(3, 1fr);
 
         grid-template-areas:
-            "title settings settings"
-            "acceleration linearAcceleration rotationRate"
-            "quaternion euler scene";
-
-        width: 100%;
-        margin-bottom: 20px;
+            "connection scene euler"
+            "acceleration linearAcceleration gravity"
+            "rotationRate magnetometer quaternion";
     }
 
-    .sideMission>div {
+    @media only screen and (max-width: 800px) {
+        #container {
+            grid-template-areas:
+                "connection"
+                "scene"
+                "euler"
+                "acceleration"
+                "linearAcceleration"
+                "gravity"
+                "rotationRate"
+                "magnetometer"
+                "quaternion";
+
+            grid-template-rows: repeat(9, 200px);
+            grid-template-columns: repeat(1, 1fr);
+        }
+    }
+
+    #connection label:not(:first-of-type)::before {
+        content: "|";
+    }
+
+    #container>div {
         width: 100%;
         height: 100%;
+        box-sizing: border-box;
         border: solid black 1px;
         margin: 0;
         padding: 0;
@@ -30,128 +57,129 @@
         background-color: white;
     }
 
-    .sideMission>div>canvas {
+    canvas {
         width: 100%;
         height: 100%;
     }
 
-    .sideMission>.title {
-        grid-area: title;
-        text-align: center;
-    }
-    .sideMission>.settings {
-        grid-area: settings;
-    }
-    .sideMission.connected>.settings>.connect {
-        display: none;
-    }
-    .sideMission>.settings>.connected {
-        width: fit-content;
-        float: left;
-    }
-    .sideMission:not(.connected)>.settings>.connected {
-        display: none;
+    #connection {
+        padding-left: 1em !important;
+        grid-area: connection;
     }
 
-    .sideMission>.acceleration {
+    #acceleration {
         grid-area: acceleration;
     }
-    .sideMission>.linearAcceleration {
+
+    #gravity {
+        grid-area: gravity;
+    }
+
+    #linearAcceleration {
         grid-area: linearAcceleration;
     }
-    .sideMission>.rotationRate {
+
+    #rotationRate {
         grid-area: rotationRate;
     }
 
-    .sideMission>.quaternion {
+    #magnetometer {
+        grid-area: magnetometer;
+    }
+
+    #quaternion {
         grid-area: quaternion;
     }
-    .sideMission>.euler {
+
+    #euler {
         grid-area: euler;
     }
-    .sideMission>.scene {
+
+    #scene {
         grid-area: scene;
     }
 </style>
 
 <body>
-    <h1>Ukaton Side Mission Extension Template</h1>
+    <div id="container">
+        <div id="connection">
+            <h1>
+                Ukaton Side Mission Extension - Slouch
+            </h1>
 
-    <label id="numberOfSideMissions">
-        Number of Side Missions: <input type="number" min="1" step="1" value="1" max="6">
-    </label>
+            <button id="connect">
+                connect
+            </button>
 
-    <hr>
+            <label class="rate">
+                Rate (ms)
+                <input type="number" min="20" max="1000" value="40" step="10" />
+            </label>
 
-    <div id="sideMissions">
-        <template id="sideMissionTemplate">
-            <div class="sideMission">
-                <div class="title">
-                    <h1>Side Mission #<span class="index"></span></h1>
-                </div>
-                <div class="settings">
-                    <button class="connect">connect</button>
-                    
-                    <fieldset class="sensors connected">
-                        <legend>sensors</legend>
-                        <label class="accelerometer">
-                            accelerometer <input type="checkbox">
-                        </label>
-                        <label class="gyroscope">
-                            gyroscope <input type="checkbox">
-                        </label>
-                        <label class="quaternion">
-                            quaternion <input type="checkbox">
-                        </label>
-                    </fieldset>
-
-                    <fieldset class="callibration connected">
-                        <legend>callibration</legend>
-                        <button class="pitchMin">Pitch Min</button>
-                        <button class="pitchMax">Pitch Max</button>
-                    </fieldset>
-                </div>
-
-                <div class="acceleration">
-                    <canvas></canvas>
-                </div>
-                <div class="linearAcceleration">
-                    <canvas></canvas>
-                </div>
-                <div class="rotationRate">
-                    <canvas></canvas>
-                </div>
-
-                <div class="quaternion">
-                    <canvas></canvas>
-                </div>
-                <div class="euler">
-                    <canvas></canvas>
-                </div>
-
-                <div class="scene">
-                    <a-scene embedded vr-mode-ui="enabled: false">
-                        <a-assets>
-                            <a-asset-item id="bodyAsset" src="assets/sideMission_body.obj"></a-asset-item>
-                            <a-asset-item id="lidAsset" src="assets/sideMission_lid.obj"></a-asset-item>
-                            <img id="logoAsset" src="assets/logo.png" />
-                        </a-assets>
-                        <a-camera active position="0 0 3" rotation="0 0 0"></a-camera>
-                        <a-entity class="case" position="0 0 0" rotation="0 -90 0">
-                            <a-image scale="1.8 1.8 1.8" rotation="-90 0 0" position="0 0.455 0" class="logo"
-                                src="#logoAsset"></a-image>
-                            <a-entity scale="0.05 0.05 0.05" rotation="-90 -90 0">
-                                <a-entity position="-20 -17.5 -10">
-                                    <a-entity class="body" obj-model="obj: #bodyAsset;"></a-entity>
-                                    <a-entity class="lid" obj-model="obj: #lidAsset;"></a-entity>
-                                </a-entity>
-                            </a-entity>
+            <label data-type="acceleration">
+                Acceleration<input type="checkbox" />
+            </label>
+            <label data-type="gravity">
+                Gravity<input type="checkbox" />
+            </label>
+            <label data-type="linearAcceleration">
+                Linear Acceration<input type="checkbox" />
+            </label>
+            <label data-type="rotationRate">
+                Rotation Rate<input type="checkbox" />
+            </label>
+            <label data-type="magnetometer">
+                Magnetometer<input type="checkbox" />
+            </label>
+            <label data-type="quaternion">
+                Quaternion<input type="checkbox" />
+            </label>
+            
+            <button id="pitchMin">Pitch Min</button>
+            <button id="pitchMax">Pitch Max</button>
+        </div>
+        <div id="acceleration">
+            <canvas></canvas>
+        </div>
+        <div id="gravity">
+            <canvas></canvas>
+        </div>
+        <div id="linearAcceleration">
+            <canvas></canvas>
+        </div>
+        <div id="rotationRate">
+            <canvas></canvas>
+        </div>
+        <div id="magnetometer">
+            <canvas></canvas>
+        </div>
+        <div id="quaternion">
+            <canvas></canvas>
+        </div>
+        <div id="euler">
+            <canvas></canvas>
+        </div>
+        <div id="scene">
+            <a-scene embedded vr-mode-ui="enabled: false">
+                <a-assets>
+                    <a-asset-item id="bodyAsset" src="assets/sideMission_body.obj"></a-asset-item>
+                    <a-asset-item id="lidAsset" src="assets/sideMission_lid.obj"></a-asset-item>
+                    <img id="logoAsset" src="assets/logo.png" />
+                </a-assets>
+                <a-camera active position="0 0 3.5" rotation="0 0 0"></a-camera>
+                <a-entity id="sideMission" position="0 0 0" rotation="0 -90 0">
+                    <a-image scale="1.8 1.8 1.8" rotation="-90 0 0" position="0 0.455 0" class="logo" src="#logoAsset">
+                    </a-image>
+                    <a-entity scale="0.05 0.05 0.05" rotation="-90 -90 0">
+                        <a-entity position="-20 -17.5 -10">
+                            <a-entity class="body" obj-model="obj: #bodyAsset;"></a-entity>
+                            <a-entity class="lid" obj-model="obj: #lidAsset;"></a-entity>
                         </a-entity>
-                        <a-sky color="darkgrey"></a-sky>
-                    </a-scene>
-                </div>
-            </div>
-        </template>
+                    </a-entity>
+                </a-entity>
+                <a-sky color="darkgrey"></a-sky>
+            </a-scene>
+        </div>
     </div>
 </body>
 
